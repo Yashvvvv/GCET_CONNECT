@@ -1,3 +1,4 @@
 <resources>
-    <string name="app_name">College Bot</string>
+    <string name="app_name">CollegeBot</string>
+    <string name="gemini_api_key">AIzaSyDE9UlxG64A8CRXQCSuAw-LJwM0rgnl460</string>
 </resources>

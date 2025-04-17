@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.collegebot.data.ChatDatabase
+import com.example.collegebot.Constants
 import com.google.ai.client.generativeai.GenerativeModel
 import com.google.ai.client.generativeai.type.content
 import kotlinx.coroutines.launch
@@ -40,7 +41,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
     val generativeModel: GenerativeModel = GenerativeModel(
         modelName = "gemini-2.0-flash",
-        apiKey = Constants.apiKey
+        apiKey = Constants.getApiKey(application)
     )
 
     private val commonKeywords = setOf(

@@ -100,4 +100,16 @@ Copyright (c) 2024
 
 - Galgotias College of Engineering and Technology for inspiration
 - Google for the Generative AI API
-- Android Jetpack team for Compose 
+- Android Jetpack team for Compose
+
+## API Key Setup
+
+This application uses the Gemini API. To run the app, you need to set up your own API key:
+
+1. Create a copy of `gradle.properties.example` and name it `gradle.properties`
+2. Replace `your_gemini_api_key_here` with your actual Gemini API key
+3. Build and run the application
+
+## Note for Collaborators
+
+The `gradle.properties` file is excluded from Git to keep API keys secure. Never commit this file to version control. 

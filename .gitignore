@@ -13,3 +13,6 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# Exclude gradle.properties with API keys
+gradle.properties
