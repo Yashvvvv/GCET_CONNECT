@@ -81,7 +81,7 @@ The app uses a dual approach for answering questions:
 ## Structure Diagram
 ```mermaid
 graph TD
-    UI[ChatPage.kt (UI)] --> VM[ChatViewModel.kt (ViewModel)]
+    UI[ChatPage.kt - UI] --> VM[ChatViewModel.kt - ViewModel]
     VM --> DB[Room Database]
     VM --> AI[Google Gemini API]
     VM --> CQ[CustomQueries.kt]
@@ -94,8 +94,8 @@ graph TD
 ```mermaid
 sequenceDiagram
     participant User
-    participant UI as ChatPage.kt
-    participant VM as ChatViewModel.kt
+    participant UI as ChatPage.kt - UI
+    participant VM as ChatViewModel.kt - ViewModel
     participant DB as Room DB
     participant AI as Gemini API
     participant CQ as CustomQueries
