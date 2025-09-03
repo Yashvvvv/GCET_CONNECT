@@ -1,20 +1,18 @@
-package com.example.collegebot
-
-
+package app.recruit.collegebot.utils
 
 val customQueries = mapOf(
     // Academic Calendar & Schedule
     "When does the semester start" to "The academic calendar is available on I-Cloud. Generally:\n- Odd Semester: July/August\n- Even Semester: January\nCheck your department notice board for exact dates.",
     "What are class timings" to "Classes run from 9:00 AM to 4:30 PM with:\n- 1st period: 9:00-9:55 AM\n- Lunch break: 12:40-1:30 PM\n- Last period: 3:35-4:30 PM",
-    
+
     // Department Information
     "List of departments in GCET" to "GCET has the following departments:\n- Computer Science & Engineering\n- Information Technology\n- Electronics & Communication\n- Electrical Engineering\n- Mechanical Engineering\n- Civil Engineering\nLocated in different blocks (A, B, C, D)",
     "Where is CSE department" to "CSE Department is located in:\n- Main Office: B Block, 2nd Floor\n- Labs: B Block (1st & 2nd Floor)\n- Faculty Rooms: B Block (All floors)",
-    
+
     // Infrastructure
     "College facilities" to "GCET facilities include:\n- Central Library (A Block)\n- Computer Labs\n- Sports Complex\n- Cafeteria\n- Medical Room\n- Auditorium\n- Innovation Labs\n- Seminar Halls",
     "Where is the library" to "Central Library is in A Block:\n- Ground + First Floor\n- Timing: 8:30 AM - 5:00 PM\n- Digital Section available\n- Reading halls on both floors",
-    
+
     // Academic Resources
     "How to access study material" to "Study materials available through:\n1. I-Cloud Portal\n2. Department Library\n3. Faculty Handouts\n4. Digital Library Access\nContact your class coordinator for access.",
     "Where to get previous year papers" to "Previous year papers available at:\n1. Department Library\n2. I-Cloud Portal\n3. Class Coordinator\n4. Subject Faculty",
@@ -22,23 +20,23 @@ val customQueries = mapOf(
     // Examination
     "Exam pattern" to "Examinations include:\n1. Sessionals (30 marks)\n- Two sessionals per semester\n- Best of two considered\n2. Finals (70 marks)\n- End semester examination",
     "Supplementary exam rules" to "Supplementary exams:\n- Conducted for failed subjects\n- Usually in July/August\n- Registration required\n- Fees applicable per subject",
-    
+
     // Placements
     "Placement cell location" to "Training & Placement Cell:\n- Location: D Block, Ground Floor\n- Timing: 9:00 AM - 5:00 PM\n- Contact: placement.gcet@galgotias.edu",
     "Companies visiting campus" to "Regular recruiters include:\n- IT Giants (TCS, Infosys, Wipro)\n- Product Companies\n- Core Engineering\nCheck T&P notice board for schedule",
-    
+
     // Administrative
     "Important contact numbers" to "Key contacts:\n- Reception: 0120-XXXXXXX\n- Academic Office: 0120-XXXXXXX\n- Examination Cell: 0120-XXXXXXX\n- Emergency: 0120-XXXXXXX",
     "How to get documents" to "For official documents visit:\n- Academic Section (D Block)\n- Timing: 10:00 AM - 4:00 PM\n- Required: College ID\n- Processing time: 2-3 days",
-    
+
     // Transportation
     "College bus service" to "College bus service:\n- Multiple routes covering NCR\n- Pickup points list on website\n- Bus pass from Transport Office\n- Contact: transport.gcet@galgotias.edu",
     "Bus pass procedure" to "For bus pass:\n1. Visit Transport Office (Gate 2)\n2. Fill application form\n3. Submit with ID proof\n4. Pay semester charges\nTiming: 9:30 AM - 3:30 PM",
-    
+
     // Hostel
     "Hostel facilities" to "GCET hostels offer:\n- Separate boys/girls blocks\n- Wi-Fi enabled\n- Mess facility\n- 24x7 security\n- Medical facility\nContact hostel warden for details",
     "Hostel admission process" to "Hostel admission steps:\n1. Apply through I-Cloud\n2. Submit documents\n3. Pay fees\n4. Room allocation\nContact hostel office: hostel.gcet@galgotias.edu",
-    
+
     // Sports & Recreation
     "Sports facilities" to "Sports facilities include:\n- Cricket ground\n- Basketball court\n- Volleyball court\n- Indoor games room\n- Gym\nLocation: Behind B Block",
     "How to join sports team" to "Join sports teams:\n1. Contact Sports Officer\n2. Attend trials\n3. Selection based on performance\nOffice: Near Sports Complex",
@@ -58,22 +56,22 @@ val customQueries = mapOf(
     // Attendance Requirements
     "What is the minimum attendance required to sit for exams" to "You need a minimum of 75% attendance to be eligible for final exams. Attendance details can be checked in the student portal (I CLOUD).",
 
-    // Additional Queries (Add more here)
+    // Additional Queries
     "How do I pay my semester fees" to "Semester fees can be paid online via the student portal under the 'FEE' section. Payment methods include debit/credit cards, net banking, or UPI.",
 
-    // Add all the other queries from the provided text in the same format
+    // College Information
     "What are the college timings" to "The college operates from 9 AM to 5 PM.",
     "Who is the director of galgotias college" to "The director of Galgotias College is Mr. Vikram Bali.",
     "Nearest Metro Station to galgotias" to "The nearest Metro Station is Knowledge Park 2, Aqua Line.",
     "Where is Director's office" to "The Director's office is located in A block ground floor of the college.",
 
-    // Bot's Name Handling (Custom Responses for "What is your name?")
+    // Bot's Name Handling
     "What is your name" to "My name is GCET Connect.",
     "Tell me your name" to "My name is GCET Connect.",
     "What should I call you" to "You can call me GCET Connect.",
     "Who are you?" to "I am GCET Connect, your virtual assistant.",
     "What do you go by?" to "You can call me GCET Connect.",
-    "What’s your name" to "My name is GCET Connect.",
+    "What's your name" to "My name is GCET Connect.",
     "How should I address you" to "You can address me as GCET Connect.",
     "What is your title" to "I am GCET Connect, your assistant.",
 
@@ -101,7 +99,7 @@ val customQueries = mapOf(
 
     // Practical File Queries
     "How to make practical file" to "Practical files should:\n1. Use college-approved formats\n2. Include all experiments\n3. Get regular signatures from faculty\n4. Be properly indexed\nGet materials from college stationery.",
-    
+
     // Project Related
-    "Where to do college projects" to "College projects can be done at:\n1. College Innovation Lab (C Block)\n2. Department Labs\n3. Library's Research Section\nBook slots through department coordinator.",
+    "Where to do college projects" to "College projects can be done at:\n1. College Innovation Lab (C Block)\n2. Department Labs\n3. Library's Research Section\nBook slots through department coordinator."
 )

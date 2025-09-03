@@ -1,6 +1,9 @@
-package com.example.collegebot.data
+package app.recruit.collegebot.data.local.dao
 
-import androidx.room.*
+import androidx.room.Dao
+import androidx.room.Insert
+import androidx.room.Query
+import app.recruit.collegebot.data.local.entities.MessageEntity
 
 @Dao
 interface MessageDao {
@@ -12,4 +15,4 @@ interface MessageDao {
 
     @Query("DELETE FROM messages")
     suspend fun clearAllMessages()
-} 
+}

@@ -1,4 +1,4 @@
-package com.example.collegebot.data
+package app.recruit.collegebot.data.local.entities
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
@@ -10,4 +10,4 @@ data class MessageEntity(
     val content: String,
     val sender: String,
     val timestamp: Long = System.currentTimeMillis()
-) 
+)

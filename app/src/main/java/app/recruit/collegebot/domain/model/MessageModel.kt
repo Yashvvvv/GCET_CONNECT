@@ -1,5 +1,4 @@
-package com.example.collegebot
-
+package app.recruit.collegebot.domain.model
 
 data class MessageModel(
     val message : String,

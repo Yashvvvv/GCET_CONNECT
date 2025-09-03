@@ -1,4 +1,4 @@
-package com.example.collegebot
+package app.recruit.collegebot.presentation.ui.chat
 
 import android.os.Build
 import androidx.activity.compose.BackHandler
@@ -8,7 +8,6 @@ import androidx.compose.animation.animateColor
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.StartOffset
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
@@ -41,13 +40,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.filled.Send
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -80,12 +76,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import app.recruit.collegebot.domain.model.MessageModel
+import app.recruit.collegebot.presentation.viewmodel.ChatViewModel
 import com.airbnb.lottie.compose.LottieAnimation
 import com.airbnb.lottie.compose.LottieCompositionSpec
 import com.airbnb.lottie.compose.LottieConstants
@@ -93,8 +90,6 @@ import com.airbnb.lottie.compose.animateLottieCompositionAsState
 import com.airbnb.lottie.compose.rememberLottieComposition
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlin.random.Random
-
 
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
@@ -108,11 +103,9 @@ fun ChatPage(
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
     var showSuggestions by remember { mutableStateOf(false) }
-    var showSplashAnimation by remember { mutableStateOf(true) }
-    
+
     // Handle back press
     BackHandler(enabled = viewModel.showMessages.value) {
-        // When back is pressed, hide messages and show welcome screen
         viewModel.toggleMessageVisibility(false)
     }
     
@@ -127,7 +120,7 @@ fun ChatPage(
                         horizontalArrangement = Arrangement.Center
                     ) {
                         Image(
-                            painter = painterResource(id = R.drawable.gcet_logo),
+                            painter = painterResource(id = com.example.collegebot.R.drawable.gcet_logo),
                             contentDescription = "GCET Logo",
                             modifier = Modifier
                                 .size(40.dp)
@@ -148,17 +141,14 @@ fun ChatPage(
                         }
                     }
                 },
-                
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer
                 )
             )
         },
         bottomBar = {
-            // Only show bottom bar when messages are visible
             if (viewModel.showMessages.value) {
                 Column {
-                    // Suggestions chips
                     AnimatedVisibility(
                         visible = showSuggestions,
                         enter = expandVertically(),
@@ -179,16 +169,13 @@ fun ChatPage(
                                     label = { Text(suggestion) },
                                     shape = RoundedCornerShape(16.dp),
                                     border = SuggestionChipDefaults.suggestionChipBorder(
-
-                                        borderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
-
+                                        borderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
                                     )
                                 )
                             }
                         }
                     }
 
-                    // Input field and send button
                     Surface(
                         modifier = Modifier.fillMaxWidth(),
                         tonalElevation = 8.dp
@@ -203,11 +190,10 @@ fun ChatPage(
                                 Icon(
                                     if (showSuggestions) Icons.Default.KeyboardArrowDown 
                                     else Icons.Default.KeyboardArrowUp,
-                                    "Toggle Suggestions"
+                                    contentDescription = "Toggle Suggestions"
                                 )
                             }
                             
-                            // Always show the text field
                             ShinyBorderTextField(
                                 value = userInput,
                                 onValueChange = { userInput = it },
@@ -219,8 +205,7 @@ fun ChatPage(
                                 },
                                 modifier = Modifier
                                     .weight(1f)
-                                    .padding(horizontal = 8.dp),
-                                showSplashAnimation = showSplashAnimation // Pass the flag
+                                    .padding(horizontal = 8.dp)
                             )
                             
                             AnimatedSendButton(
@@ -243,11 +228,10 @@ fun ChatPage(
     ) { paddingValues ->
         Box(
             modifier = Modifier
-            .fillMaxSize()
+                .fillMaxSize()
                 .padding(paddingValues)
         ) {
             if (!viewModel.showMessages.value || messageList.isEmpty()) {
-                // Welcome screen with Lottie animation
                 WelcomeContent(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -258,7 +242,6 @@ fun ChatPage(
                     }
                 )
             } else {
-                // Chat messages
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxSize()
@@ -273,34 +256,22 @@ fun ChatPage(
             }
         }
     }
-
-    // Handle splash animation logic
-    if (showSplashAnimation) {
-        LaunchedEffect(Unit) {
-            // Simulate splash screen duration
-            delay(3000) // Adjust duration as needed
-            showSplashAnimation = false
-        }
-    }
 }
 
 @Composable
 fun MessageRow(messageModel: MessageModel) {
     val isBot = messageModel.role == "model"
     
-    // Animation for message appearance
-    val enterTransition = remember { fadeIn(animationSpec = tween(300)) }
-    
-    AnimatedVisibility(visible = true, enter = enterTransition) {
+    AnimatedVisibility(visible = true, enter = fadeIn(animationSpec = tween(300))) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = if (isBot) Arrangement.Start else Arrangement.End
         ) {
             if (isBot) {
                 Image(
-                    painter = painterResource(id = R.drawable.bot_avatar),
+                    painter = painterResource(id = com.example.collegebot.R.drawable.bot_avatar),
                     contentDescription = "Bot Avatar",
-        modifier = Modifier
+                    modifier = Modifier
                         .size(32.dp)
                         .clip(CircleShape)
                         .align(Alignment.Top)
@@ -315,9 +286,9 @@ fun MessageRow(messageModel: MessageModel) {
             ) {
                 Column(modifier = Modifier.padding(12.dp)) {
                     if (messageModel.isTyping) {
-                        TypingIndicator()  // Show typing indicator
+                        TypingIndicator()
                     } else {
-        Text(
+                        Text(
                             text = messageModel.message,
                             color = if (isBot) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSecondaryContainer
                         )
@@ -328,7 +299,7 @@ fun MessageRow(messageModel: MessageModel) {
             if (!isBot) {
                 Spacer(modifier = Modifier.width(8.dp))
                 Image(
-                    painter = painterResource(id = R.drawable.user_avatar),
+                    painter = painterResource(id = com.example.collegebot.R.drawable.user_avatar),
                     contentDescription = "User Avatar",
                     modifier = Modifier
                         .size(32.dp)
@@ -336,34 +307,6 @@ fun MessageRow(messageModel: MessageModel) {
                         .align(Alignment.Top)
                 )
             }
-        }
-    }
-}
-
-@Composable
-fun LoadingAnimation() {
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-        modifier = Modifier.padding(8.dp)
-    ) {
-        repeat(3) { index ->
-            val infiniteTransition = rememberInfiniteTransition()
-            val alpha by infiniteTransition.animateFloat(
-                initialValue = 0.2f,
-                targetValue = 1f,
-                animationSpec = infiniteRepeatable(
-                    animation = tween(600),
-                    repeatMode = RepeatMode.Reverse,
-                    initialStartOffset = StartOffset(index * 200)
-                )
-            )
-            
-            Box(
-                modifier = Modifier
-                    .size(8.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primary.copy(alpha = alpha))
-            )
         }
     }
 }
@@ -376,9 +319,7 @@ fun WelcomeContent(
     onSuggestionClick: (String) -> Unit
 ) {
     var userInput by remember { mutableStateOf("") }
-    val coroutineScope = rememberCoroutineScope()
 
-    // Animation states
     val scale by animateFloatAsState(
         targetValue = 1f,
         animationSpec = spring(
@@ -400,7 +341,6 @@ fun WelcomeContent(
                 )
             )
     ) {
-        // Add subtle floating circles in background
         FloatingCircles()
         
         Column(
@@ -411,9 +351,8 @@ fun WelcomeContent(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Lottie Animation with enhanced size and shadow
             val composition by rememberLottieComposition(
-                LottieCompositionSpec.RawRes(R.raw.chat_animation)
+                LottieCompositionSpec.RawRes(com.example.collegebot.R.raw.chat_animation)
             )
             val progress by animateLottieCompositionAsState(
                 composition = composition,
@@ -440,13 +379,12 @@ fun WelcomeContent(
             ) {
                 LottieAnimation(
                     composition = composition,
-                    progress = progress,
+                    progress = { progress },
                     modifier = Modifier.fillMaxSize()
                 )
             }
 
-            // Animated welcome text
-            AnimatedText(
+            Text(
                 text = "Welcome to GCET Connect!",
                 style = MaterialTheme.typography.headlineMedium.copy(
                     shadow = Shadow(
@@ -455,7 +393,24 @@ fun WelcomeContent(
                         blurRadius = 4f
                     )
                 ),
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+                modifier = Modifier
+                    .scale(
+                        animateFloatAsState(
+                            targetValue = 1f,
+                            animationSpec = spring(
+                                dampingRatio = Spring.DampingRatioMediumBouncy,
+                                stiffness = Spring.StiffnessLow
+                            )
+                        ).value
+                    )
+                    .alpha(
+                        animateFloatAsState(
+                            targetValue = 1f,
+                            animationSpec = tween(1000)
+                        ).value
+                    )
             )
 
             Text(
@@ -466,7 +421,6 @@ fun WelcomeContent(
                 modifier = Modifier.alpha(0.8f)
             )
 
-            // Enhanced input field
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -485,19 +439,16 @@ fun WelcomeContent(
                         .fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-
                     ShinyBorderTextField(
                         value = userInput,
                         onValueChange = { userInput = it },
-                        modifier = Modifier
-                            .weight(1f),
+                        modifier = Modifier.weight(1f),
                         placeholder = {
                             Text(
                                 "Ask me anything about GCET...",
                                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                             )
-                        },
-                        showSplashAnimation = true
+                        }
                     )
                     
                     AnimatedSendButton(
@@ -512,7 +463,6 @@ fun WelcomeContent(
                 }
             }
 
-            // Animated quick action chips
             AnimatedChipsRow(
                 suggestions = listOf(
                     Pair("Campus Tour", "Tell me about campus tour"),
@@ -526,47 +476,9 @@ fun WelcomeContent(
     }
 }
 
-@Composable
-private fun AnimatedText(
-    text: String,
-    style: TextStyle,
-    fontWeight: FontWeight
-) {
-    var textVisible by remember { mutableStateOf(false) }
-    
-    LaunchedEffect(Unit) {
-        textVisible = true
-    }
-
-    val springAnimation = spring<Float>(
-        dampingRatio = Spring.DampingRatioMediumBouncy,
-        stiffness = Spring.StiffnessLow
-    )
-
-    Text(
-        text = text,
-        style = style,
-        fontWeight = fontWeight,
-        textAlign = TextAlign.Center,
-        modifier = Modifier
-            .scale(
-                animateFloatAsState(
-                    targetValue = if (textVisible) 1f else 0f,
-                    animationSpec = springAnimation
-                ).value
-            )
-            .alpha(
-                animateFloatAsState(
-                    targetValue = if (textVisible) 1f else 0f,
-                    animationSpec = tween(1000)
-                ).value
-            )
-    )
-}
-
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun AnimatedChipsRow(
+fun AnimatedChipsRow(
     suggestions: List<Pair<String, String>>,
     onSuggestionClick: (String) -> Unit
 ) {
@@ -618,7 +530,7 @@ fun QuickActionChip(
 }
 
 @Composable
-private fun AnimatedSendButton(
+fun AnimatedSendButton(
     onClick: () -> Unit,
     enabled: Boolean
 ) {
@@ -635,7 +547,7 @@ private fun AnimatedSendButton(
         modifier = Modifier.scale(scale)
     ) {
         Icon(
-            Icons.Default.Send,
+            Icons.AutoMirrored.Filled.Send,
             contentDescription = "Send",
             tint = if (enabled) 
                 MaterialTheme.colorScheme.primary 
@@ -644,7 +556,6 @@ private fun AnimatedSendButton(
     }
 }
 
-// Common queries for suggestions
 val commonQueries = listOf(
     "Class timings",
     "Exam schedule",
@@ -659,8 +570,7 @@ fun ShinyBorderTextField(
     value: String,
     onValueChange: (String) -> Unit,
     modifier: Modifier = Modifier,
-    placeholder: @Composable () -> Unit,
-    showSplashAnimation: Boolean
+    placeholder: @Composable () -> Unit
 ) {
     val infiniteTransition = rememberInfiniteTransition()
     val offset by infiniteTransition.animateFloat(
@@ -712,9 +622,8 @@ fun ShinyBorderTextField(
     }
 }
 
-// Add this new composable for floating circles effect
 @Composable
-private fun FloatingCircles() {
+fun FloatingCircles() {
     Box(modifier = Modifier.fillMaxSize()) {
         repeat(6) { index ->
             val infiniteTransition = rememberInfiniteTransition()
@@ -770,7 +679,10 @@ private fun FloatingCircles() {
 
 @Composable
 fun TypingIndicator() {
-    Row(modifier = Modifier.padding(8.dp)) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        modifier = Modifier.padding(8.dp)
+    ) {
         repeat(3) { index ->
             val infiniteTransition = rememberInfiniteTransition()
             val alpha by infiniteTransition.animateFloat(
@@ -789,23 +701,4 @@ fun TypingIndicator() {
             )
         }
     }
-}
-
-@Composable
-fun ChatBackground() {
-    val transition = rememberInfiniteTransition()
-    val color by transition.animateColor(
-        initialValue = Color(0xFF1E3D59),
-        targetValue = Color(0xFF2D5F8B),
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 5000, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse
-        )
-    )
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(color)
-    )
 }

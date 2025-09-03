@@ -1,9 +1,11 @@
-package com.example.collegebot.data
+package app.recruit.collegebot.data.local.database
 
 import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import app.recruit.collegebot.data.local.dao.MessageDao
+import app.recruit.collegebot.data.local.entities.MessageEntity
 
 @Database(entities = [MessageEntity::class], version = 1)
 abstract class ChatDatabase : RoomDatabase() {
@@ -25,4 +27,4 @@ abstract class ChatDatabase : RoomDatabase() {
             }
         }
     }
-} 
+}
