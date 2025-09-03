@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -17,8 +19,20 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         
-        // Add the API key from gradle.properties
-        val geminiApiKey = project.findProperty("GEMINI_API_KEY") as String? ?: ""
+        // Prefer project property, then local.properties, then environment variable
+        val geminiApiKey: String = run {
+            val fromProject = (project.findProperty("GEMINI_API_KEY") as String?)?.takeIf { it.isNotBlank() }
+            val fromLocal = runCatching {
+                val f = project.rootProject.file("local.properties")
+                if (f.exists()) {
+                    val props = Properties()
+                    f.inputStream().use { props.load(it) }
+                    props.getProperty("GEMINI_API_KEY")?.takeIf { it.isNotBlank() }
+                } else null
+            }.getOrNull()
+            val fromEnv = System.getenv("GEMINI_API_KEY")?.takeIf { it.isNotBlank() }
+            listOf(fromProject, fromLocal, fromEnv).firstOrNull { it != null } ?: ""
+        }
         buildConfigField("String", "GEMINI_API_KEY", "\"$geminiApiKey\"")
     }
 

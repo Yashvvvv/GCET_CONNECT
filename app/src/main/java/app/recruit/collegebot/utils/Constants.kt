@@ -1,20 +1,14 @@
 package app.recruit.collegebot.utils
 
 import android.content.Context
+import com.example.collegebot.BuildConfig
 
-// This approach keeps your API key secure and not exposed in Git repository
+// Keep API key in gradle.properties; read via BuildConfig so it's not exposed in the repo
 object Constants {
-    // Reads com.example.collegebot.BuildConfig.GEMINI_API_KEY via reflection at runtime
-    val API_KEY: String by lazy {
-        try {
-            val clazz = Class.forName("com.example.collegebot.BuildConfig")
-            val field = clazz.getField("GEMINI_API_KEY")
-            (field.get(null) as? String).orEmpty()
-        } catch (_: Throwable) {
-            "" // Ensure GEMINI_API_KEY is set in gradle.properties and wired via build.gradle.kts
-        }
-    }
+    // Value comes from: app/build.gradle.kts -> buildConfigField("String", "GEMINI_API_KEY", ...)
+    // and gradle.properties -> GEMINI_API_KEY=...
+    const val API_KEY: String = BuildConfig.GEMINI_API_KEY
 
-    // For call site compatibility (some pass Application/Context)
+    // Kept for call-site compatibility (some call with Application/Context)
     fun getApiKey(@Suppress("UNUSED_PARAMETER") context: Context? = null): String = API_KEY
 }
