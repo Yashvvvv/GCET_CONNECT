@@ -1,50 +1,194 @@
 package app.recruit.collegebot.presentation.viewmodel
 
-import android.app.Application
-import androidx.compose.runtime.State
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.lifecycle.AndroidViewModel
+import android.util.Log
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import app.recruit.collegebot.data.local.database.ChatDatabase
+import app.recruit.collegebot.data.local.entities.MessageEntity
 import app.recruit.collegebot.domain.model.MessageModel
-import app.recruit.collegebot.utils.Constants
+import app.recruit.collegebot.domain.repository.ChatRepository
 import app.recruit.collegebot.utils.customQueries
-import com.google.ai.client.generativeai.GenerativeModel
-import com.google.ai.client.generativeai.type.content
+import com.google.genai.Client
+import com.google.genai.types.Content
+import com.google.genai.types.Part
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import javax.inject.Inject
 import kotlin.math.max
 import kotlin.math.min
 
-class ChatViewModel(application: Application) : AndroidViewModel(application) {
-    private val database = ChatDatabase.getDatabase(application)
-    private val messageDao = database.messageDao()
+@HiltViewModel
+class ChatViewModel @Inject constructor(
+    private val chatRepository: ChatRepository,
+    private val client: Client
+) : ViewModel() {
 
-    private val _messageList = mutableStateListOf<MessageModel>()
-    val messageList: List<MessageModel> = _messageList
-
-    // Add a state to track if messages are being shown
-    private val _showMessages = mutableStateOf(false)
-    val showMessages: State<Boolean> = _showMessages
+    private val _uiState = MutableStateFlow(ChatUiState())
+    val uiState: StateFlow<ChatUiState> = _uiState.asStateFlow()
 
     init {
         loadMessages()
     }
 
+    // ── History ──────────────────────────────────────────────────────
+
     private fun loadMessages() {
         viewModelScope.launch {
-            val savedMessages = messageDao.getAllMessages()
-            _messageList.clear()
-            _messageList.addAll(savedMessages.map { entity ->
-                MessageModel(entity.content, entity.sender)
-            })
+            val saved = chatRepository.getAllMessages()
+            val messages = saved.map { MessageModel(it.content, it.sender) }
+            _uiState.update {
+                it.copy(
+                    messages        = messages,
+                    showWelcome     = messages.isEmpty(),
+                    isLoadingHistory = false
+                )
+            }
         }
     }
 
-    val generativeModel: GenerativeModel = GenerativeModel(
-        modelName = "gemini-2.0-flash",
-        apiKey = Constants.getApiKey(application)
-    )
+    // ── Send + streaming ─────────────────────────────────────────────
+
+    fun sendMessage(question: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val userMsg   = MessageModel(question, "user")
+            val typingMsg = MessageModel("", "model", isTyping = true)
+
+            withContext(Dispatchers.Main) {
+                _uiState.update {
+                    it.copy(
+                        messages    = it.messages + userMsg + typingMsg,
+                        showWelcome = false,
+                        isStreaming = true,
+                        error       = null
+                    )
+                }
+            }
+
+            try {
+                val bestMatch = findBestMatchingQuery(question)
+
+                if (bestMatch != null && bestMatch.second > 0.7) {
+                    // Instant custom answer
+                    val answer = customQueries[bestMatch.first] ?: "I don't have that info yet."
+                    withContext(Dispatchers.Main) {
+                        _uiState.update { state ->
+                            state.copy(
+                                messages    = state.messages.dropLast(1) + MessageModel(answer, "model"),
+                                isStreaming = false
+                            )
+                        }
+                    }
+                    persistMessage(userMsg)
+                    persistMessage(MessageModel(answer, "model"))
+
+                } else {
+                    // Streaming Gemini response
+                    val historyForChat = _uiState.value.messages
+                        .dropLast(2) // drop: new user msg + typing indicator
+                        .filter { it.role in listOf("user", "model") && !it.isTyping && it.message.isNotBlank() }
+                        .map {
+                            Content.builder().role(it.role).parts(listOf(Part.fromText(it.message))).build()
+                        }
+
+                    val prompt = buildPrompt(question)
+                    val promptContent = Content.builder().role("user").parts(listOf(Part.fromText(prompt))).build()
+                    val contents = historyForChat + promptContent
+
+                    val stream = client.models.generateContentStream("gemini-2.5-flash", contents, null)
+
+                    // Replace typing indicator with an empty bot message to stream into
+                    withContext(Dispatchers.Main) {
+                        _uiState.update { state ->
+                            state.copy(
+                                messages = state.messages.dropLast(1) + MessageModel("", "model")
+                            )
+                        }
+                    }
+
+                    var accumulated = ""
+
+                    for (chunk in stream) {
+                        accumulated += chunk.text() ?: ""
+                        withContext(Dispatchers.Main) {
+                            _uiState.update { state ->
+                                val msgs = state.messages.toMutableList()
+                                if (msgs.isNotEmpty()) {
+                                    msgs[msgs.lastIndex] = MessageModel(accumulated, "model")
+                                }
+                                state.copy(messages = msgs)
+                            }
+                        }
+                    }
+
+                    withContext(Dispatchers.Main) {
+                        _uiState.update { it.copy(isStreaming = false) }
+                    }
+                    persistMessage(userMsg)
+                    persistMessage(MessageModel(accumulated, "model"))
+                }
+
+            } catch (e: Exception) {
+                Log.e("ChatViewModel", "sendMessage failed: ${e.javaClass.simpleName}: ${e.message}", e)
+                val msg = e.message.orEmpty()
+                val errorMsg = when {
+                    msg.contains("API key", ignoreCase = true) ||
+                    msg.contains("API_KEY", ignoreCase = true) ||
+                    msg.contains("invalid", ignoreCase = true) ||
+                    msg.contains("403", ignoreCase = true) ->
+                        "API key invalid. Get a new key from aistudio.google.com."
+                    msg.contains("network", ignoreCase = true) ||
+                    msg.contains("Unable to resolve", ignoreCase = true) ||
+                    msg.contains("timeout", ignoreCase = true) ||
+                    msg.contains("connect", ignoreCase = true) ->
+                        "No internet connection. Check your network."
+                    msg.contains("not found", ignoreCase = true) ||
+                    msg.contains("404", ignoreCase = true) ->
+                        "Model not found. Check model name in AppModule."
+                    else -> "Error: ${msg.take(120)}"
+                }
+                withContext(Dispatchers.Main) {
+                    _uiState.update { state ->
+                        state.copy(
+                            messages    = state.messages.dropLast(1),
+                            isStreaming = false,
+                            error       = errorMsg
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    fun retryLast() {
+        val msgs = _uiState.value.messages
+        val lastUser = msgs.lastOrNull { it.role == "user" } ?: return
+        _uiState.update { it.copy(error = null) }
+        sendMessage(lastUser.message)
+    }
+
+    fun dismissError() = _uiState.update { it.copy(error = null) }
+
+    fun clearChat() {
+        viewModelScope.launch {
+            chatRepository.clearAllMessages()
+            _uiState.update { ChatUiState(isLoadingHistory = false) }
+        }
+    }
+
+    // ── Persistence ───────────────────────────────────────────────────
+
+    private suspend fun persistMessage(msg: MessageModel) {
+        chatRepository.insertMessage(
+            MessageEntity(content = msg.message, sender = msg.role)
+        )
+    }
+
+    // ── Query matching ────────────────────────────────────────────────
 
     private val commonKeywords = setOf(
         "assignment", "practical", "submit", "stationery", "lab", "manual",
@@ -53,10 +197,8 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun calculateSimilarity(s1: String, s2: String): Double {
         val dp = Array(s1.length + 1) { IntArray(s2.length + 1) }
-
         for (i in 0..s1.length) dp[i][0] = i
         for (j in 0..s2.length) dp[0][j] = j
-
         for (i in 1..s1.length) {
             for (j in 1..s2.length) {
                 dp[i][j] = min(
@@ -65,133 +207,44 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                 )
             }
         }
-
-        val maxLength = max(s1.length, s2.length)
-        return 1 - (dp[s1.length][s2.length].toDouble() / maxLength)
+        return 1.0 - dp[s1.length][s2.length].toDouble() / max(s1.length, s2.length)
     }
 
     private fun findBestMatchingQuery(userQuery: String): Pair<String, Double>? {
-        val normalizedUserQuery = userQuery.lowercase().trim()
+        val normalized = userQuery.lowercase().trim()
+        val userKeywords = normalized.split(" ").filter { it.length > 3 }.toSet()
+        val hasCommonKeyword = commonKeywords.any { normalized.contains(it) }
         var bestMatch: String? = null
-        var bestSimilarity = 0.0
+        var bestScore = 0.0
 
-        // Check for common keywords first
-        val containsCommonKeyword = commonKeywords.any {
-            normalizedUserQuery.contains(it)
-        }
+        for (key in customQueries.keys) {
+            val normKey = key.lowercase()
+            val strSim = calculateSimilarity(normalized, normKey)
+            val keyOverlap = userKeywords
+                .intersect(normKey.split(" ").filter { it.length > 3 }.toSet())
+                .size.toDouble() / max(userKeywords.size, 1)
+            val bonus = if (hasCommonKeyword) 0.1 else 0.0
+            val score = strSim * 0.4 + keyOverlap * 0.6 + bonus
 
-        val userKeywords = normalizedUserQuery.split(" ")
-            .filter { it.length > 3 }
-            .toSet()
-
-        for (customQuery in customQueries.keys) {
-            val normalizedCustomQuery = customQuery.lowercase()
-            val fullStringSimilarity = calculateSimilarity(normalizedUserQuery, normalizedCustomQuery)
-
-            val customKeywords = normalizedCustomQuery.split(" ")
-                .filter { it.length > 3 }
-                .toSet()
-            val keywordOverlap = userKeywords.intersect(customKeywords).size.toDouble() /
-                    max(userKeywords.size, customKeywords.size)
-
-            // Give bonus similarity for common keywords
-            val keywordBonus = if (containsCommonKeyword) 0.1 else 0.0
-            val combinedSimilarity = (fullStringSimilarity * 0.4) +
-                                   (keywordOverlap * 0.6) +
-                                   keywordBonus
-
-            if (combinedSimilarity > bestSimilarity) {
-                bestSimilarity = combinedSimilarity
-                bestMatch = customQuery
+            if (score > bestScore) {
+                bestScore = score
+                bestMatch = key
             }
         }
-
-        return bestMatch?.let { Pair(it, bestSimilarity) }
+        return bestMatch?.let { Pair(it, bestScore) }
     }
 
-    fun sendMessage(question: String) {
-        viewModelScope.launch {
-            try {
-                _messageList.add(MessageModel(question, "user"))
-                _messageList.add(MessageModel("Typing...", "model", isTyping = true))
+    private fun buildPrompt(question: String) = """
+        Context: You are GCET Connect, an AI assistant for Galgotias College of Engineering and Technology, Greater Noida.
 
-                // Handle other queries
-                val bestMatch = findBestMatchingQuery(question)
-                when {
-                    bestMatch != null && bestMatch.second > 0.7 -> {
-                        if (_messageList.isNotEmpty()) _messageList.removeAt(_messageList.lastIndex)
-                        val customAnswer = customQueries[bestMatch.first]
-                        _messageList.add(
-                            MessageModel(
-                                customAnswer ?: "I don't understand the question.", "model"
-                            )
-                        )
-                    }
+        Rules:
+        1. Answer college-specific questions accurately and helpfully.
+        2. For general academic queries, give constructive guidance.
+        3. For inappropriate or harmful content, respond: "I cannot assist with that."
+        4. Keep responses concise, professional, and educational.
+        5. If unsure, suggest the relevant department or college website.
+        6. For personal issues, recommend the student counseling center.
 
-                    else -> {
-                        val chat = generativeModel.startChat(
-                            history = _messageList.map {
-                                content(it.role) { text(it.message) }
-                            }.toList()
-                        )
-
-                        // Prepare the question for the generative model
-                        val constrainedQuestion = """
-                            Context: You are GCET Connect, a chatbot for Galgotias College of Engineering and Technology, Greater Noida.
-                            
-                            Rules:
-                            1. For college-specific questions, provide accurate, helpful information
-                            2. For general academic queries, provide constructive guidance
-                            3. For non-academic but relevant queries, give appropriate responses
-                            4. For inappropriate, explicit, or harmful content, respond with "I cannot assist with such queries"
-                            5. Keep responses professional and educational
-                            6. If unsure, suggest visiting relevant department/website
-                            7. For personal issues, recommend student counseling center
-                            
-                            User Question: $question
-                            
-                            Please provide a helpful response following these rules.
-                        """.trimIndent()
-
-                        if (_messageList.isNotEmpty()) _messageList.removeAt(_messageList.lastIndex)
-                        val response = chat.sendMessage(constrainedQuestion)
-                        _messageList.add(MessageModel(response.text.toString(), "model"))
-                    }
-                }
-
-            } catch (e: Exception) {
-                if (_messageList.isNotEmpty()) _messageList.removeAt(_messageList.lastIndex)
-                _messageList.add(MessageModel("Error: ${e.message}", "model"))
-            }
-        }
-    }
-
-    override fun onCleared() {
-        super.onCleared()
-        saveMessages()
-    }
-
-    private fun saveMessages() {
-        viewModelScope.launch {
-            // Save messages to local database
-            for (message in _messageList) {
-                val entity = app.recruit.collegebot.data.local.entities.MessageEntity(
-                    content = message.message,
-                    sender = message.role
-                )
-                messageDao.insertMessage(entity)
-            }
-        }
-    }
-
-    fun clearChat() {
-        viewModelScope.launch {
-            messageDao.clearAllMessages()
-            _messageList.clear()
-        }
-    }
-
-    fun toggleMessageVisibility(show: Boolean) {
-        _showMessages.value = show
-    }
+        Question: $question
+    """.trimIndent()
 }

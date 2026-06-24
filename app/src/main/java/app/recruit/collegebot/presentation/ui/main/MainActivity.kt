@@ -6,31 +6,22 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
-import androidx.activity.viewModels
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
 import androidx.compose.ui.Modifier
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.compose.runtime.getValue
 import app.recruit.collegebot.presentation.ui.chat.ChatPage
 import app.recruit.collegebot.presentation.ui.splash.SplashScreen
-import app.recruit.collegebot.presentation.viewmodel.ChatViewModel
+import app.recruit.collegebot.presentation.ui.study.StudyScreen
 import com.example.collegebot.ui.theme.CollegeBotTheme
+import dagger.hilt.android.AndroidEntryPoint
 
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
-    private val chatViewModel: ChatViewModel by viewModels {
-        object : ViewModelProvider.Factory {
-            @Suppress("UNCHECKED_CAST")
-            override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                return ChatViewModel(application) as T
-            }
-        }
-    }
 
     @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -39,9 +30,11 @@ class MainActivity : ComponentActivity() {
         setContent {
             CollegeBotTheme {
                 val navController = rememberNavController()
+                val navBackStackEntry by navController.currentBackStackEntryAsState()
+                val currentRoute = navBackStackEntry?.destination?.route
 
                 NavHost(
-                    navController = navController,
+                    navController    = navController,
                     startDestination = "splash"
                 ) {
                     composable("splash") {
@@ -49,18 +42,18 @@ class MainActivity : ComponentActivity() {
                     }
 
                     composable("chat") {
-                        BackHandler {
-                            showExitDialog()
-                        }
+                        BackHandler(enabled = currentRoute == "chat") { showExitDialog() }
+                        ChatPage(
+                            modifier     = Modifier.fillMaxSize(),
+                            onStudyClick = { navController.navigate("study") }
+                        )
+                    }
 
-                        Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                            ChatPage(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(innerPadding),
-                                viewModel = chatViewModel
-                            )
-                        }
+                    composable("study") {
+                        StudyScreen(
+                            modifier      = Modifier.fillMaxSize(),
+                            navController = navController
+                        )
                     }
                 }
             }
@@ -69,12 +62,10 @@ class MainActivity : ComponentActivity() {
 
     private fun showExitDialog() {
         AlertDialog.Builder(this)
-            .setTitle("Exit App")
-            .setMessage("Do you want to exit the app?")
-            .setPositiveButton("Yes") { _, _ ->
-                finish()
-            }
-            .setNegativeButton("No", null)
+            .setTitle("Exit")
+            .setMessage("Exit GCET Connect?")
+            .setPositiveButton("Exit") { _, _ -> finish() }
+            .setNegativeButton("Cancel", null)
             .show()
     }
 }

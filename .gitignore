@@ -16,3 +16,6 @@ local.properties
 
 # Exclude gradle.properties with API keys
 gradle.properties
+
+# Local learning docs (not for repo)
+/docs/

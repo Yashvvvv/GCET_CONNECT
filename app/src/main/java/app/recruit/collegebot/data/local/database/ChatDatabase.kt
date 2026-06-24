@@ -1,30 +1,11 @@
 package app.recruit.collegebot.data.local.database
 
-import android.content.Context
 import androidx.room.Database
-import androidx.room.Room
 import androidx.room.RoomDatabase
 import app.recruit.collegebot.data.local.dao.MessageDao
 import app.recruit.collegebot.data.local.entities.MessageEntity
 
-@Database(entities = [MessageEntity::class], version = 1)
+@Database(entities = [MessageEntity::class], version = 1, exportSchema = false)
 abstract class ChatDatabase : RoomDatabase() {
     abstract fun messageDao(): MessageDao
-
-    companion object {
-        @Volatile
-        private var INSTANCE: ChatDatabase? = null
-
-        fun getDatabase(context: Context): ChatDatabase {
-            return INSTANCE ?: synchronized(this) {
-                val instance = Room.databaseBuilder(
-                    context.applicationContext,
-                    ChatDatabase::class.java,
-                    "chat_database"
-                ).build()
-                INSTANCE = instance
-                instance
-            }
-        }
-    }
 }
